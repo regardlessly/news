@@ -3,45 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CNA News Chat</title>
+  <title>CaritaHub News Assistant</title>
   <link rel="stylesheet" href="/chat/static/style.css" />
 </head>
 <body>
   <div class="layout">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <span class="logo">📰 CNA Chat</span>
-      </div>
-      <button class="btn-new-chat" id="newChatBtn">+ New Chat</button>
-      <div class="sidebar-info" id="sidebarInfo">
-        <p>Loading news status...</p>
-      </div>
-      <div class="sidebar-hints">
-        <p class="hint-title">Try asking:</p>
-        <ul>
-          <li>"What happened in Singapore today?"</li>
-          <li>"Tell me more about the latest business news"</li>
-          <li>"What were the top stories this week?"</li>
-          <li>"Any updates on the situation in Asia?"</li>
-        </ul>
-      </div>
-      <div class="sidebar-links">
-        <a href="/">📰 News Viewer</a>
-      </div>
-      <div class="sidebar-footer">
-        <button class="btn-icon" id="themeToggle" title="Toggle theme">🌙</button>
-      </div>
-    </aside>
-
-    <!-- Main chat area -->
+    <!-- Main chat area (no sidebar) -->
     <main class="chat-main">
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <span class="chat-logo">📰 CaritaHub News Assistant</span>
+        </div>
+        <div class="chat-header-right">
+          <button class="btn-new-chat-top" id="newChatBtn">+ New Chat</button>
+          <a href="/" class="btn-nav">News Viewer</a>
+          <a href="/digest" class="btn-nav btn-nav-primary">Senior Digest</a>
+          <button class="btn-icon" id="themeToggle" title="Toggle theme">🌙</button>
+        </div>
+      </div>
+
       <div class="chat-messages" id="chatMessages">
         <div class="welcome-message">
           <div class="welcome-icon">🗞️</div>
-          <h2>CNA News Assistant</h2>
-          <p>Ask me anything about recent news from Channel NewsAsia. I have access to articles from the past 7 days.</p>
-          <p class="welcome-hint">Run <code>python fetch_news.py</code> to fetch the latest news first.</p>
+          <h2>CaritaHub News Assistant</h2>
+          <p>Ask me anything about recent news. I have access to articles from the past 7 days.</p>
         </div>
       </div>
 
