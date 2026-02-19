@@ -77,24 +77,97 @@ def summarise_article(
         return None
 
 
+SENIOR_SELECT_PROMPT = (
+    "You are a news editor curating content for seniors (aged 60+) in Singapore.\n\n"
+    "Below is a numbered list of article titles from the '{section}' news section today.\n\n"
+    "{titles}\n\n"
+    "Pick the TOP 10 articles most relevant and useful to seniors. "
+    "Seniors care about: health, healthcare, cost of living, government policies, "
+    "CPF/retirement/pensions, housing (HDB), community events, family, social services, "
+    "transport, safety, Singapore local news, and major world events that affect daily life.\n"
+    "Skip: celebrity gossip, gaming, youth trends, nightlife, extreme sports.\n\n"
+    "Reply with ONLY a JSON array of the selected article numbers (1-based), e.g. [1,3,5,7,9,11,13,15,17,20]. "
+    "No explanation, no text, just the JSON array."
+)
+
 SECTION_DIGEST_PROMPT = (
     "You are a friendly news editor writing a daily digest for seniors (aged 60+).\n\n"
-    "Below are up to 10 article summaries from the '{section}' news section today.\n\n"
+    "Below are the 10 most senior-relevant article summaries from the '{section}' news section today.\n\n"
     "{summaries}\n\n"
-    "Select ONLY the stories that are most relevant and interesting to seniors. "
-    "Topics seniors care about include: health, healthcare, cost of living, government policies, "
-    "CPF/retirement/pensions, housing (HDB), community events, family, social services, "
-    "transport, safety, Singapore local news, and major world events that affect daily life. "
-    "Skip stories about: celebrity gossip, gaming, youth trends, nightlife, extreme sports.\n\n"
-    "Write a single cohesive digest (paragraph or bullet points) covering only the senior-relevant stories. Requirements:\n"
+    "Write a single cohesive digest (paragraph or bullet points) covering these stories. Requirements:\n"
     "- Maximum 150 words\n"
     "- Friendly, warm, conversational tone — easy for anyone to understand\n"
     "- Use bullet points (starting with '- ') when there are 3 or more distinct topics, otherwise flowing prose\n"
     "- For bullet points, use '**Topic:**' style bold labels where helpful\n"
     "- Do not start with 'Today' or 'Here is'\n"
-    "- Do not mention the number of articles or that you filtered anything\n"
+    "- Do not mention the number of articles\n"
     "- Write directly — no preamble like 'This section covers...'"
 )
+
+
+def select_senior_articles(
+    section_label: str,
+    articles: List[Dict],
+    top_n: int = 10,
+) -> List[Dict]:
+    """
+    Use DeepSeek to pick the top_n most senior-relevant articles from a list.
+    articles: list of dicts with at least 'title' and 'summary' keys.
+    Returns a filtered list of up to top_n articles.
+    Falls back to the first top_n articles if the API call fails.
+    """
+    if len(articles) <= top_n:
+        return articles
+
+    titles = "\n".join(f"{i+1}. {a['title']}" for i, a in enumerate(articles))
+    prompt = SENIOR_SELECT_PROMPT.format(section=section_label, titles=titles)
+
+    import json as _json
+    import re as _re
+
+    def _call():
+        client = get_client()
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            max_tokens=100,
+        )
+        return resp.choices[0].message.content.strip()
+
+    try:
+        raw = _call()
+    except RateLimitError:
+        logger.warning("Rate limit on senior article selection, retrying in 60s...")
+        time.sleep(60)
+        try:
+            raw = _call()
+        except Exception as e:
+            logger.error(f"Senior article selection retry failed: {e}")
+            return articles[:top_n]
+    except Exception as e:
+        logger.error(f"Senior article selection error: {e}")
+        return articles[:top_n]
+
+    # Parse the JSON array from the response
+    try:
+        # Extract first JSON array found in the response
+        match = _re.search(r'\[[\d,\s]+\]', raw)
+        if not match:
+            raise ValueError(f"No JSON array in response: {raw!r}")
+        indices = _json.loads(match.group())
+        # Convert 1-based to 0-based, clamp to valid range
+        selected = []
+        for idx in indices:
+            i = int(idx) - 1
+            if 0 <= i < len(articles):
+                selected.append(articles[i])
+        if not selected:
+            raise ValueError("Empty selection after parsing")
+        return selected[:top_n]
+    except Exception as e:
+        logger.error(f"Failed to parse senior article selection ({e}), using first {top_n}")
+        return articles[:top_n]
 
 
 def summarise_section(
@@ -103,15 +176,12 @@ def summarise_section(
     max_input_chars: int = 6000,
 ) -> Optional[str]:
     """
-    Produce a single ≤150-word senior-focused digest paragraph for a news section.
-    article_summaries: list of individual article summary strings.
+    Produce a single ≤150-word digest paragraph for a news section.
+    article_summaries: list of pre-selected article summary strings (≤10).
     Returns the digest string, or None on failure.
     """
     if not article_summaries:
         return None
-
-    # Limit to top 10 to keep prompt focused and senior-relevant
-    article_summaries = article_summaries[:10]
 
     # Join summaries, truncate to avoid huge prompts
     joined = "\n".join(f"- {s}" for s in article_summaries)

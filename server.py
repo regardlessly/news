@@ -93,20 +93,26 @@ def _build_digest(days: int = 1) -> dict:
         arts  = groups[s]
         label = SECTION_LABELS.get(s, s.title())
         icon  = SECTION_ICONS.get(s, "📰")
-        raw_summaries = [a.get("summary", "").strip() for a in arts if a.get("summary", "").strip()]
 
-        logger.info(f"Building digest for section '{label}' ({len(raw_summaries)} summaries)...")
-        digest = summariser.summarise_section(label, raw_summaries)
+        # Step 1: pick the top 10 senior-relevant articles from this section
+        logger.info(f"Selecting top 10 senior articles for '{label}' ({len(arts)} total)...")
+        selected_arts = summariser.select_senior_articles(label, arts, top_n=10)
+
+        # Step 2: summarise only those 10 articles
+        selected_summaries = [a.get("summary", "").strip() for a in selected_arts if a.get("summary", "").strip()]
+        logger.info(f"Summarising {len(selected_summaries)} selected articles for '{label}'...")
+        digest = summariser.summarise_section(label, selected_summaries)
         if not digest:
-            digest = " ".join(raw_summaries)
+            digest = " ".join(selected_summaries)
 
-        links = [{"title": a["title"], "url": a["url"]} for a in arts]
+        # Return all articles as source links, highlight selected ones
+        links = [{"title": a["title"], "url": a["url"]} for a in selected_arts]
         result.append({
             "section":       s,
             "label":         label,
             "icon":          icon,
             "summary":       digest,
-            "article_count": len(arts),
+            "article_count": len(selected_arts),
             "articles":      links,
         })
 
