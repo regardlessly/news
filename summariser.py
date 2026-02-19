@@ -79,7 +79,7 @@ def summarise_article(
 
 SECTION_DIGEST_PROMPT = (
     "You are a friendly news editor writing a daily digest for seniors (aged 60+).\n\n"
-    "Below are individual article summaries from the '{section}' news section today.\n\n"
+    "Below are up to 10 article summaries from the '{section}' news section today.\n\n"
     "{summaries}\n\n"
     "Select ONLY the stories that are most relevant and interesting to seniors. "
     "Topics seniors care about include: health, healthcare, cost of living, government policies, "
@@ -89,7 +89,8 @@ SECTION_DIGEST_PROMPT = (
     "Write a single cohesive digest (paragraph or bullet points) covering only the senior-relevant stories. Requirements:\n"
     "- Maximum 150 words\n"
     "- Friendly, warm, conversational tone — easy for anyone to understand\n"
-    "- Use bullet points when there are 3 or more distinct topics, otherwise flowing prose\n"
+    "- Use bullet points (starting with '- ') when there are 3 or more distinct topics, otherwise flowing prose\n"
+    "- For bullet points, use '**Topic:**' style bold labels where helpful\n"
     "- Do not start with 'Today' or 'Here is'\n"
     "- Do not mention the number of articles or that you filtered anything\n"
     "- Write directly — no preamble like 'This section covers...'"
@@ -108,6 +109,9 @@ def summarise_section(
     """
     if not article_summaries:
         return None
+
+    # Limit to top 10 to keep prompt focused and senior-relevant
+    article_summaries = article_summaries[:10]
 
     # Join summaries, truncate to avoid huge prompts
     joined = "\n".join(f"- {s}" for s in article_summaries)
