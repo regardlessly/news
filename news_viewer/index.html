@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CNA News Digest</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <span class="logo">📰 CNA Digest</span>
+        <span class="status-text" id="statusText">Loading...</span>
+      </div>
+      <div class="header-right">
+        <a href="http://localhost:8002" class="btn-chat" target="_blank">💬 Chat with News</a>
+        <button class="btn-icon" id="themeToggle" title="Toggle theme">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">Section:</span>
+      <div class="pill-group" id="sectionPills">
+        <button class="pill active" data-section="all">All</button>
+        <button class="pill" data-section="singapore">Singapore</button>
+        <button class="pill" data-section="asia">Asia</button>
+        <button class="pill" data-section="world">World</button>
+        <button class="pill" data-section="business">Business</button>
+        <button class="pill" data-section="sport">Sport</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Period:</span>
+      <div class="pill-group" id="dayPills">
+        <button class="pill active" data-days="1">Today</button>
+        <button class="pill" data-days="2">Yesterday</button>
+        <button class="pill" data-days="7">Last 7 days</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="main">
+    <div id="newsGrid" class="news-grid">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading articles...</p>
+      </div>
+    </div>
+    <div id="loadMoreContainer" class="load-more-container" style="display:none;">
+      <button id="loadMoreBtn" class="btn-load-more">Load more</button>
+    </div>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

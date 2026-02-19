@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CNA News Chat</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="logo">📰 CNA Chat</span>
+      </div>
+      <button class="btn-new-chat" id="newChatBtn">+ New Chat</button>
+      <div class="sidebar-info" id="sidebarInfo">
+        <p>Loading news status...</p>
+      </div>
+      <div class="sidebar-hints">
+        <p class="hint-title">Try asking:</p>
+        <ul>
+          <li>"What happened in Singapore today?"</li>
+          <li>"Tell me more about the latest business news"</li>
+          <li>"What were the top stories this week?"</li>
+          <li>"Any updates on the situation in Asia?"</li>
+        </ul>
+      </div>
+      <div class="sidebar-links">
+        <a href="http://localhost:8001" target="_blank">📰 News Viewer</a>
+      </div>
+      <div class="sidebar-footer">
+        <button class="btn-icon" id="themeToggle" title="Toggle theme">🌙</button>
+      </div>
+    </aside>
+
+    <!-- Main chat area -->
+    <main class="chat-main">
+      <div class="chat-messages" id="chatMessages">
+        <div class="welcome-message">
+          <div class="welcome-icon">🗞️</div>
+          <h2>CNA News Assistant</h2>
+          <p>Ask me anything about recent news from Channel NewsAsia. I have access to articles from the past 7 days.</p>
+          <p class="welcome-hint">Run <code>python fetch_news.py</code> to fetch the latest news first.</p>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="input-row">
+          <textarea
+            id="chatInput"
+            class="chat-input"
+            placeholder="Ask about the news..."
+            rows="1"
+          ></textarea>
+          <button class="btn-send" id="sendBtn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+        <p class="input-hint">Based on CNA articles from the past 7 days</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
