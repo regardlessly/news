@@ -77,6 +77,72 @@ def summarise_article(
         return None
 
 
+SECTION_DIGEST_PROMPT = (
+    "You are a friendly news editor writing a daily digest for general readers.\n\n"
+    "Below are individual article summaries from the '{section}' news section today.\n\n"
+    "{summaries}\n\n"
+    "Write a single cohesive digest paragraph (or use bullet points where helpful) that captures "
+    "the most important stories. Requirements:\n"
+    "- Maximum 150 words\n"
+    "- Friendly, clear, conversational tone — easy for anyone to understand\n"
+    "- Use bullet points for 3 or more distinct topics, otherwise flowing prose is fine\n"
+    "- Do not start with 'Today' or 'Here is'\n"
+    "- Do not mention the number of articles\n"
+    "- Write directly — no preamble like 'This section covers...'"
+)
+
+
+def summarise_section(
+    section_label: str,
+    article_summaries: List[str],
+    max_input_chars: int = 6000,
+) -> Optional[str]:
+    """
+    Produce a single ≤150-word digest paragraph for a news section.
+    article_summaries: list of individual article summary strings.
+    Returns the digest string, or None on failure.
+    """
+    if not article_summaries:
+        return None
+
+    # Join summaries, truncate to avoid huge prompts
+    joined = "\n".join(f"- {s}" for s in article_summaries)
+    joined = joined[:max_input_chars]
+
+    prompt = SECTION_DIGEST_PROMPT.format(
+        section=section_label,
+        summaries=joined,
+    )
+
+    try:
+        client = get_client()
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
+            max_tokens=250,
+        )
+        return response.choices[0].message.content.strip()
+    except RateLimitError:
+        logger.warning("Rate limit hit on section digest, waiting 60s...")
+        time.sleep(60)
+        try:
+            client = get_client()
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4,
+                max_tokens=250,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"Section digest retry failed: {e}")
+            return None
+    except Exception as e:
+        logger.error(f"Section digest error: {e}")
+        return None
+
+
 def summarise_batch(
     articles: List[Dict],
     update_fn: Callable[[int, str], None],

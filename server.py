@@ -33,6 +33,7 @@ from typing import Optional
 
 import database
 import chat as chat_module
+import summariser
 
 database.init_db()
 
@@ -99,33 +100,28 @@ def get_digest_summary(days: int = Query(1, ge=1, le=7)):
         groups[s].append(art)
 
     result = []
-    for s in section_order:
-        if s not in groups:
-            continue
-        arts = groups[s]
-        summaries = [a.get("summary", "").strip() for a in arts if a.get("summary", "").strip()]
-        combined = " ".join(summaries)
+    ordered_sections = [s for s in section_order if s in groups]
+    extra_sections   = [s for s in groups if s not in section_order]
+
+    for s in ordered_sections + extra_sections:
+        arts  = groups[s]
+        label = section_labels.get(s, s.title())
+        icon  = section_icons.get(s, "📰")
+        raw_summaries = [a.get("summary", "").strip() for a in arts if a.get("summary", "").strip()]
+        # Ask DeepSeek to produce a single ≤150-word friendly digest
+        digest = summariser.summarise_section(label, raw_summaries)
+        # Fall back to plain join if API call fails
+        if not digest:
+            digest = " ".join(raw_summaries)
         links = [{"title": a["title"], "url": a["url"]} for a in arts]
         result.append({
             "section":       s,
-            "label":         section_labels.get(s, s.title()),
-            "icon":          section_icons.get(s, "📰"),
-            "summary":       combined,
+            "label":         label,
+            "icon":          icon,
+            "summary":       digest,
             "article_count": len(arts),
             "articles":      links,
         })
-    # Catch any sections not in the standard order
-    for s, arts in groups.items():
-        if s not in section_order:
-            summaries = [a.get("summary", "").strip() for a in arts if a.get("summary", "").strip()]
-            result.append({
-                "section":       s,
-                "label":         s.title(),
-                "icon":          "📰",
-                "summary":       " ".join(summaries),
-                "article_count": len(arts),
-                "articles":      [{"title": a["title"], "url": a["url"]} for a in arts],
-            })
     return {"groups": result, "total": len(articles)}
 
 
