@@ -11,6 +11,7 @@ import config
 logger = logging.getLogger(__name__)
 
 _client: Optional[OpenAI] = None
+_embed_client: Optional[OpenAI] = None
 
 SUMMARISE_PROMPT = (
     "Summarise the following news article in 2-3 concise sentences. "
@@ -30,6 +31,31 @@ def get_client() -> OpenAI:
             base_url="https://api.deepseek.com",
         )
     return _client
+
+
+def get_embed_client() -> OpenAI:
+    global _embed_client
+    if _embed_client is None:
+        if not config.OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY is not set in .env")
+        _embed_client = OpenAI(api_key=config.OPENAI_API_KEY)
+    return _embed_client
+
+
+def embed_texts(texts: List[str]) -> List[List[float]]:
+    """
+    Embed a list of texts using OpenAI text-embedding-3-small (1536 dims).
+    Returns one float vector per input text.
+    Raises on API error.
+    """
+    client = get_embed_client()
+    response = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=texts,
+    )
+    # Sort by index to preserve input order
+    items = sorted(response.data, key=lambda x: x.index)
+    return [item.embedding for item in items]
 
 
 def summarise_article(

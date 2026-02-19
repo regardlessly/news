@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 _client: Optional[OpenAI] = None
 
 CHAT_MODEL = "deepseek-chat"
-MAX_CONTEXT_ARTICLES = 5
+MAX_CONTEXT_ARTICLES = 10
 MAX_ARTICLE_TEXT_CHARS = 1500
 MAX_HISTORY_TURNS = 6   # last N user+assistant pairs
 
@@ -34,10 +34,11 @@ STOPWORDS = {
     "brief","summary","summarise","summarize","tell","know","about",
 }
 
-SYSTEM_PROMPT = """You are a warm, friendly news assistant talking with seniors. You have access to recent articles from Channel NewsAsia (CNA), Singapore's leading news outlet.
+SYSTEM_PROMPT = """You are a warm, friendly news assistant talking with seniors. You have access to 7 days of recent articles from Channel NewsAsia (CNA), covering all sections: Singapore, Asia, World, Business, and Sport.
 
 When answering:
 - Base your answers on the provided article context
+- You can answer about any section — Singapore, Asia, World, Business, Sport
 - If no relevant articles are provided, say so honestly
 - Keep answers SHORT and conversational — like chatting with a friend, not writing a report
 - Use simple, clear language — avoid jargon
@@ -68,9 +69,20 @@ def preprocess_query(query: str) -> List[str]:
 
 
 def find_relevant_articles(query: str, days: int = 7) -> List[Dict[str, Any]]:
-    """Search DB for articles relevant to the query."""
-    articles = database.search_articles(query=query, days=days, limit=MAX_CONTEXT_ARTICLES)
-    return articles
+    """Semantic search via pgvector; falls back to keyword search on SQLite or API error."""
+    if database.USE_PG:
+        try:
+            vectors = summariser.embed_texts([query])
+            articles = database.search_articles_semantic(
+                query_embedding=vectors[0],
+                days=days,
+                limit=MAX_CONTEXT_ARTICLES,
+            )
+            if articles:
+                return articles
+        except Exception as e:
+            logger.warning(f"Semantic search failed, falling back to keyword: {e}")
+    return database.search_articles(query=query, days=days, limit=MAX_CONTEXT_ARTICLES)
 
 
 def build_context_block(articles: List[Dict[str, Any]]) -> str:
@@ -137,7 +149,7 @@ def chat(
     # Save user message first
     database.save_chat_message(session_id=session_id, role="user", content=user_message)
 
-    # Find relevant articles
+    # Find relevant articles via semantic search (pgvector) or keyword fallback
     articles = find_relevant_articles(user_message, days=7)
     article_ids = [a["id"] for a in articles]
 

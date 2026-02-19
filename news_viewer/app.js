@@ -3,6 +3,7 @@
    ====================================================== */
 
 const LIMIT = 60;
+const SECTIONS = ['singapore', 'asia', 'world', 'business', 'sport'];
 
 const state = {
   section: 'all',
@@ -160,32 +161,45 @@ async function fetchArticles(reset = false) {
     state.articles = [];
   }
 
-  const params = new URLSearchParams({
-    section: state.section,
-    days: state.days,
-    limit: LIMIT,
-    offset: state.offset,
-  });
+  let newArticles;
 
-  let data;
-  try {
-    data = await apiFetch(`/api/articles?${params}`);
-  } catch (e) {
-    if (reset) {
-      document.getElementById('newsGrid').innerHTML = `
-        <div class="empty-state">
-          <h3>Could not connect to server</h3>
-          <p>Make sure <code>python viewer_server.py</code> is running.</p>
-        </div>`;
+  if (state.section === 'all') {
+    // Fetch each section in parallel so no section is starved by a global sort limit
+    const results = await Promise.all(
+      SECTIONS.map(sec =>
+        apiFetch(`/api/articles?section=${sec}&days=${state.days}&limit=${LIMIT}&offset=0`)
+          .then(d => d.articles || [])
+          .catch(() => [])
+      )
+    );
+    newArticles = results.flat();
+    state.hasMore = false; // all loaded at once in "All" mode
+  } else {
+    let data;
+    try {
+      const params = new URLSearchParams({
+        section: state.section,
+        days: state.days,
+        limit: LIMIT,
+        offset: state.offset,
+      });
+      data = await apiFetch(`/api/articles?${params}`);
+    } catch (e) {
+      if (reset) {
+        document.getElementById('newsGrid').innerHTML = `
+          <div class="empty-state">
+            <h3>Could not connect to server</h3>
+            <p>Make sure <code>python server.py</code> is running.</p>
+          </div>`;
+      }
+      return;
     }
-    return;
+    newArticles = data.articles || [];
+    state.hasMore = newArticles.length === LIMIT;
+    state.offset += newArticles.length;
   }
 
-  const newArticles = data.articles || [];
-  state.hasMore = newArticles.length === LIMIT;
-  state.offset += newArticles.length;
-  state.articles = state.articles.concat(newArticles);
-
+  state.articles = reset ? newArticles : state.articles.concat(newArticles);
   renderGrid(newArticles, !reset);
 
   const loadMoreContainer = document.getElementById('loadMoreContainer');

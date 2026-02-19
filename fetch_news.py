@@ -106,7 +106,23 @@ def main():
         logger.info("All articles already have summaries.")
         stats = {"success": 0, "failed": 0}
 
-    # 7. Final summary
+    # 7. Embed articles that have summaries but no embedding yet (PostgreSQL only)
+    if database.USE_PG:
+        articles_to_embed = database.get_articles_without_embedding()
+        if articles_to_embed:
+            logger.info(f"Embedding {len(articles_to_embed)} articles with OpenAI...")
+            texts = [f"{a['title']}. {a['summary']}" for a in articles_to_embed]
+            try:
+                vectors = summariser.embed_texts(texts)
+                for art, vec in zip(articles_to_embed, vectors):
+                    database.update_embedding(art["id"], vec)
+                logger.info(f"Embedded {len(articles_to_embed)} articles.")
+            except Exception as e:
+                logger.error(f"Embedding failed: {e}")
+        else:
+            logger.info("All articles already have embeddings.")
+
+    # 8. Final summary
     elapsed = time.time() - start
     total_in_db = database.get_article_count(days=7)
     logger.info("=" * 60)

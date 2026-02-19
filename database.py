@@ -91,6 +91,7 @@ def init_db() -> None:
     with get_conn() as conn:
         cur = conn.cursor()
         if USE_PG:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS articles (
                     id           SERIAL PRIMARY KEY,
@@ -105,6 +106,21 @@ def init_db() -> None:
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_articles_section ON articles(section)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_articles_scraped_at ON articles(scraped_at)")
+            cur.execute("ALTER TABLE articles ADD COLUMN IF NOT EXISTS embedding vector(1536)")
+            # IVFFlat index for fast ANN search (created only when rows exist)
+            cur.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_indexes
+                        WHERE tablename = 'articles' AND indexname = 'idx_articles_embedding'
+                    ) AND (SELECT COUNT(*) FROM articles) >= 100 THEN
+                        EXECUTE 'CREATE INDEX idx_articles_embedding
+                                 ON articles USING ivfflat (embedding vector_cosine_ops)
+                                 WITH (lists = 100)';
+                    END IF;
+                END$$;
+            """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS chat_history (
                     id           SERIAL PRIMARY KEY,
@@ -357,6 +373,82 @@ def get_all_urls() -> set:
         cur.execute("SELECT url FROM articles")
         rows = cur.fetchall()
         return {row[0] for row in rows} if USE_PG else {row["url"] for row in rows}
+
+
+def get_article_index(days: int = 7, limit: int = 200) -> List[Dict[str, Any]]:
+    """Return lightweight article list (id, title, section, summary) for the past N days."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        if USE_PG:
+            cur.execute(
+                """SELECT id, title, section, summary, published_at
+                   FROM articles
+                   WHERE scraped_at >= NOW() - (%s || ' days')::INTERVAL
+                   ORDER BY published_at DESC, scraped_at DESC
+                   LIMIT %s""",
+                [str(days), limit],
+            )
+        else:
+            cur.execute(
+                """SELECT id, title, section, summary, published_at
+                   FROM articles
+                   WHERE scraped_at >= datetime('now', ? || ' days')
+                   ORDER BY published_at DESC, scraped_at DESC
+                   LIMIT ?""",
+                [f"-{days}", limit],
+            )
+        return _fetchall(cur)
+
+
+def update_embedding(article_id: int, embedding: List[float]) -> None:
+    """Store a precomputed embedding vector for an article (PostgreSQL only)."""
+    if not USE_PG:
+        return
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE articles SET embedding = %s WHERE id = %s",
+            (embedding, article_id),
+        )
+
+
+def search_articles_semantic(
+    query_embedding: List[float],
+    days: int = 7,
+    limit: int = 10,
+) -> List[Dict[str, Any]]:
+    """Return articles ranked by cosine similarity to the query embedding (PostgreSQL only)."""
+    if not USE_PG:
+        return []
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            f"""SELECT id, url, title, section, summary, full_text, published_at, scraped_at
+                FROM articles
+                WHERE scraped_at >= NOW() - ('{days} days')::INTERVAL
+                  AND embedding IS NOT NULL
+                ORDER BY embedding <=> %s
+                LIMIT %s""",
+            (query_embedding, limit),
+        )
+        return _fetchall(cur)
+
+
+def get_articles_without_embedding(limit: int = 500) -> List[Dict[str, Any]]:
+    """Return articles that have a summary but no embedding yet (PostgreSQL only)."""
+    if not USE_PG:
+        return []
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT id, title, summary FROM articles
+               WHERE summary IS NOT NULL AND summary != ''
+                 AND embedding IS NULL
+               ORDER BY scraped_at DESC
+               LIMIT %s""",
+            (limit,),
+        )
+        return _fetchall(cur)
 
 
 def get_unsummarised_articles(limit: int = 500) -> List[Dict[str, Any]]:
