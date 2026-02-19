@@ -1,21 +1,2 @@
-[[services]]
-name = "viewer"
-
-[services.build]
+[build]
 builder = "nixpacks"
-
-[services.deploy]
-startCommand = "python server.py"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
-
-[[services]]
-name = "news"
-
-[services.build]
-builder = "nixpacks"
-
-[services.deploy]
-startCommand = "python fetch_news.py"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
