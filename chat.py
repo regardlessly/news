@@ -11,6 +11,7 @@ from openai import OpenAI, APIError, RateLimitError
 
 import config
 import database
+import summariser
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +34,16 @@ STOPWORDS = {
     "brief","summary","summarise","summarize","tell","know","about",
 }
 
-SYSTEM_PROMPT = """You are a helpful news assistant with access to recent articles from Channel NewsAsia (CNA), Singapore's leading news outlet.
+SYSTEM_PROMPT = """You are a warm, friendly news assistant talking with seniors. You have access to recent articles from Channel NewsAsia (CNA), Singapore's leading news outlet.
 
 When answering:
 - Base your answers on the provided article context
-- If no relevant articles are provided, say so honestly and suggest the user fetch news first
-- Keep answers concise but informative (2-4 paragraphs)
-- Cite articles by their title when referencing them
+- If no relevant articles are provided, say so honestly
+- Keep answers SHORT and conversational — like chatting with a friend, not writing a report
+- Use simple, clear language — avoid jargon
+- Cite the article title naturally in your answer (e.g. "According to CNA...")
 - For follow-up questions, use both the article context and conversation history
+- Aim for 2-3 short paragraphs at most
 
 Today's date: {today}
 """
@@ -159,7 +162,13 @@ def chat(
             temperature=0.5,
             max_tokens=1024,
         )
-        reply = response.choices[0].message.content.strip()
+        raw_reply = response.choices[0].message.content.strip()
+        # Condense into a short, conversational reply for seniors
+        condensed = summariser.summarise_chat_reply(
+            question=user_message,
+            answer=raw_reply,
+        )
+        reply = condensed if condensed else raw_reply
     except RateLimitError as e:
         logger.error(f"DeepSeek rate limit: {e}")
         reply = "I'm temporarily rate-limited. Please try again in a moment."

@@ -144,12 +144,22 @@
       border-radius: 12px;
     }
 
-    /* Combined summary paragraph */
+    /* Combined summary */
     .section-summary {
       font-size: 1.05rem;
       line-height: 1.85;
       color: var(--text);
       margin-bottom: 20px;
+    }
+    .section-summary p { margin-bottom: 10px; }
+    .section-summary p:last-child { margin-bottom: 0; }
+    .summary-bullets {
+      margin: 8px 0 10px 1.2em;
+      padding: 0;
+    }
+    .summary-bullets li {
+      margin-bottom: 6px;
+      line-height: 1.7;
     }
 
     /* Source links */
@@ -288,11 +298,30 @@
     }
 
     // ---- Render ----
+    function renderSummaryHtml(text) {
+      // Convert markdown-style bullet points to HTML list items
+      const lines = text.split('\n');
+      let html = '';
+      let inList = false;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+          if (!inList) { html += '<ul class="summary-bullets">'; inList = true; }
+          html += `<li>${escapeHtml(trimmed.slice(2))}</li>`;
+        } else {
+          if (inList) { html += '</ul>'; inList = false; }
+          if (trimmed) html += `<p>${escapeHtml(trimmed)}</p>`;
+        }
+      }
+      if (inList) html += '</ul>';
+      return html || `<p>${escapeHtml(text)}</p>`;
+    }
+
     function renderGroup(group) {
       const summary = group.summary || 'No summary available.';
       const articles = group.articles || [];
 
-      const sourceLinks = articles.map((a, i) =>
+      const sourceLinks = articles.map(a =>
         `<li><a href="${a.url}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a></li>`
       ).join('');
 
@@ -303,7 +332,7 @@
             <h2>${escapeHtml(group.label)} News</h2>
             <span class="article-count">${group.article_count} stories</span>
           </div>
-          <p class="section-summary">${escapeHtml(summary)}</p>
+          <div class="section-summary">${renderSummaryHtml(summary)}</div>
           ${articles.length ? `
             <p class="sources-label">Read the full stories</p>
             <ul class="sources-list">${sourceLinks}</ul>
@@ -322,17 +351,47 @@
         return;
       }
 
-      intro.textContent = `We have found ${data.total || 0} news stories for you today. Here is a friendly summary of what happened in each section.`;
+      intro.textContent = `Here is today's news, picked especially for you.`;
       content.innerHTML = data.groups.map(renderGroup).join('');
     }
 
-    // ---- Fetch ----
+    function showBuilding(sectionsLeft) {
+      const content = document.getElementById('digestContent');
+      const intro   = document.getElementById('digestIntro');
+      intro.textContent = 'Preparing your personalised digest — this takes about a minute on first load…';
+      const msg = sectionsLeft > 0
+        ? `Summarising sections… (${sectionsLeft} remaining)`
+        : 'Fetching today\'s news…';
+      content.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>${msg}</p>
+        </div>`;
+    }
+
+    // ---- Fetch with polling ----
+    let _pollTimer = null;
+
     async function loadDigest() {
       try {
-        const resp = await fetch('/api/digest-summary?days=1');
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        renderDigest(await resp.json());
+        // Check if cache is ready
+        const statusResp = await fetch('/api/digest-status');
+        const status = await statusResp.json();
+
+        if (status.ready) {
+          // Cache is ready — fetch instantly
+          clearTimeout(_pollTimer);
+          const resp = await fetch('/api/digest-summary?days=1');
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          renderDigest(await resp.json());
+        } else {
+          // Still building — show progress and poll
+          const sectionsLeft = 5 - (status.sections || 0);
+          showBuilding(sectionsLeft);
+          _pollTimer = setTimeout(loadDigest, 3000);
+        }
       } catch (e) {
+        clearTimeout(_pollTimer);
         document.getElementById('digestContent').innerHTML =
           '<div class="loading"><p>Could not load news. Please try refreshing the page.</p></div>';
         document.getElementById('digestIntro').textContent = '';

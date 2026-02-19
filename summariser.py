@@ -78,16 +78,20 @@ def summarise_article(
 
 
 SECTION_DIGEST_PROMPT = (
-    "You are a friendly news editor writing a daily digest for general readers.\n\n"
+    "You are a friendly news editor writing a daily digest for seniors (aged 60+).\n\n"
     "Below are individual article summaries from the '{section}' news section today.\n\n"
     "{summaries}\n\n"
-    "Write a single cohesive digest paragraph (or use bullet points where helpful) that captures "
-    "the most important stories. Requirements:\n"
+    "Select ONLY the stories that are most relevant and interesting to seniors. "
+    "Topics seniors care about include: health, healthcare, cost of living, government policies, "
+    "CPF/retirement/pensions, housing (HDB), community events, family, social services, "
+    "transport, safety, Singapore local news, and major world events that affect daily life. "
+    "Skip stories about: celebrity gossip, gaming, youth trends, nightlife, extreme sports.\n\n"
+    "Write a single cohesive digest (paragraph or bullet points) covering only the senior-relevant stories. Requirements:\n"
     "- Maximum 150 words\n"
-    "- Friendly, clear, conversational tone — easy for anyone to understand\n"
-    "- Use bullet points for 3 or more distinct topics, otherwise flowing prose is fine\n"
+    "- Friendly, warm, conversational tone — easy for anyone to understand\n"
+    "- Use bullet points when there are 3 or more distinct topics, otherwise flowing prose\n"
     "- Do not start with 'Today' or 'Here is'\n"
-    "- Do not mention the number of articles\n"
+    "- Do not mention the number of articles or that you filtered anything\n"
     "- Write directly — no preamble like 'This section covers...'"
 )
 
@@ -98,7 +102,7 @@ def summarise_section(
     max_input_chars: int = 6000,
 ) -> Optional[str]:
     """
-    Produce a single ≤150-word digest paragraph for a news section.
+    Produce a single ≤150-word senior-focused digest paragraph for a news section.
     article_summaries: list of individual article summary strings.
     Returns the digest string, or None on failure.
     """
@@ -140,6 +144,64 @@ def summarise_section(
             return None
     except Exception as e:
         logger.error(f"Section digest error: {e}")
+        return None
+
+
+CHAT_REPLY_PROMPT = (
+    "You are a warm, friendly news assistant talking to a senior reader.\n\n"
+    "The reader asked: {question}\n\n"
+    "Here is the detailed answer:\n{answer}\n\n"
+    "Rewrite this as a SHORT, conversational response — like explaining to a friend over coffee. "
+    "Requirements:\n"
+    "- Maximum 120 words\n"
+    "- Friendly, simple language — no jargon\n"
+    "- Keep the key facts but cut everything else\n"
+    "- Use plain sentences, not bullet points\n"
+    "- Do not start with 'Sure' or 'Certainly' or 'Of course'\n"
+    "- Write directly as the final reply (do not add preamble)"
+)
+
+
+def summarise_chat_reply(
+    question: str,
+    answer: str,
+) -> Optional[str]:
+    """
+    Condense a verbose chat answer into a short, conversational reply for seniors.
+    Returns the condensed reply, or None on failure (caller should use original answer).
+    """
+    # Only condense if the answer is long enough to warrant it
+    if len(answer.split()) < 60:
+        return None
+
+    prompt = CHAT_REPLY_PROMPT.format(question=question, answer=answer)
+
+    try:
+        client = get_client()
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
+            max_tokens=200,
+        )
+        return response.choices[0].message.content.strip()
+    except RateLimitError:
+        logger.warning("Rate limit hit on chat reply summarisation, waiting 60s...")
+        time.sleep(60)
+        try:
+            client = get_client()
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4,
+                max_tokens=200,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"Chat reply summarisation retry failed: {e}")
+            return None
+    except Exception as e:
+        logger.error(f"Chat reply summarisation error: {e}")
         return None
 
 
