@@ -19,6 +19,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL")          # PostgreSQL on Railway
 DB_PATH      = os.environ.get("DB_PATH", "news.db")   # SQLite fallback
 
 USE_PG = bool(DATABASE_URL)
+PGVECTOR_AVAILABLE = False   # set True at runtime if pgvector extension loads successfully
 
 # ---------------------------------------------------------------------------
 # Connection helpers
@@ -88,10 +89,10 @@ def _fetchone(cursor) -> Optional[Dict[str, Any]]:
 
 def init_db() -> None:
     """Create tables and indexes if they don't exist."""
+    # --- Block 1: Core tables (always runs, never touches pgvector) ---
     with get_conn() as conn:
         cur = conn.cursor()
         if USE_PG:
-            cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS articles (
                     id           SERIAL PRIMARY KEY,
@@ -106,21 +107,6 @@ def init_db() -> None:
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_articles_section ON articles(section)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_articles_scraped_at ON articles(scraped_at)")
-            cur.execute("ALTER TABLE articles ADD COLUMN IF NOT EXISTS embedding vector(1536)")
-            # IVFFlat index for fast ANN search (created only when rows exist)
-            cur.execute("""
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1 FROM pg_indexes
-                        WHERE tablename = 'articles' AND indexname = 'idx_articles_embedding'
-                    ) AND (SELECT COUNT(*) FROM articles) >= 100 THEN
-                        EXECUTE 'CREATE INDEX idx_articles_embedding
-                                 ON articles USING ivfflat (embedding vector_cosine_ops)
-                                 WITH (lists = 100)';
-                    END IF;
-                END$$;
-            """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS chat_history (
                     id           SERIAL PRIMARY KEY,
@@ -159,6 +145,32 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_history(session_id);
                 CREATE INDEX IF NOT EXISTS idx_chat_created ON chat_history(created_at);
             """)
+
+    # --- Block 2: pgvector (optional — separate connection so failure doesn't affect Block 1) ---
+    if USE_PG:
+        global PGVECTOR_AVAILABLE
+        try:
+            with get_conn() as conn:
+                cur = conn.cursor()
+                cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+                cur.execute("ALTER TABLE articles ADD COLUMN IF NOT EXISTS embedding vector(1536)")
+                cur.execute("""
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 FROM pg_indexes
+                            WHERE tablename = 'articles' AND indexname = 'idx_articles_embedding'
+                        ) AND (SELECT COUNT(*) FROM articles) >= 100 THEN
+                            EXECUTE 'CREATE INDEX idx_articles_embedding
+                                     ON articles USING ivfflat (embedding vector_cosine_ops)
+                                     WITH (lists = 100)';
+                        END IF;
+                    END$$;
+                """)
+            PGVECTOR_AVAILABLE = True
+            logger.info("pgvector enabled — semantic search active")
+        except Exception as e:
+            logger.warning(f"pgvector not available, using keyword search: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -401,8 +413,8 @@ def get_article_index(days: int = 7, limit: int = 200) -> List[Dict[str, Any]]:
 
 
 def update_embedding(article_id: int, embedding: List[float]) -> None:
-    """Store a precomputed embedding vector for an article (PostgreSQL only)."""
-    if not USE_PG:
+    """Store a precomputed embedding vector for an article (PostgreSQL + pgvector only)."""
+    if not USE_PG or not PGVECTOR_AVAILABLE:
         return
     with get_conn() as conn:
         cur = conn.cursor()
@@ -417,8 +429,8 @@ def search_articles_semantic(
     days: int = 7,
     limit: int = 10,
 ) -> List[Dict[str, Any]]:
-    """Return articles ranked by cosine similarity to the query embedding (PostgreSQL only)."""
-    if not USE_PG:
+    """Return articles ranked by cosine similarity to the query embedding (pgvector only)."""
+    if not USE_PG or not PGVECTOR_AVAILABLE:
         return []
     with get_conn() as conn:
         cur = conn.cursor()
@@ -435,8 +447,8 @@ def search_articles_semantic(
 
 
 def get_articles_without_embedding(limit: int = 500) -> List[Dict[str, Any]]:
-    """Return articles that have a summary but no embedding yet (PostgreSQL only)."""
-    if not USE_PG:
+    """Return articles that have a summary but no embedding yet (pgvector only)."""
+    if not USE_PG or not PGVECTOR_AVAILABLE:
         return []
     with get_conn() as conn:
         cur = conn.cursor()
