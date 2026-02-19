@@ -21,10 +21,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler("fetch.log"),
-    ],
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
@@ -92,11 +89,12 @@ def main():
 
     logger.info(f"Inserted {len(inserted)} articles, skipped {skipped} duplicates")
 
-    # 6. Summarise new articles
-    if inserted:
-        logger.info(f"Summarising {len(inserted)} articles with DeepSeek...")
+    # 6. Summarise ALL articles that are missing a summary (not just this run's inserts)
+    articles_to_summarise = database.get_unsummarised_articles()
+    if articles_to_summarise:
+        logger.info(f"Summarising {len(articles_to_summarise)} unsummarised articles with DeepSeek...")
         stats = summariser.summarise_batch(
-            articles=inserted,
+            articles=articles_to_summarise,
             update_fn=database.update_summary,
             delay_seconds=0.5,
         )
@@ -104,6 +102,9 @@ def main():
             f"Summarisation complete: {stats['success']} succeeded, "
             f"{stats['failed']} failed"
         )
+    else:
+        logger.info("All articles already have summaries.")
+        stats = {"success": 0, "failed": 0}
 
     # 7. Final summary
     elapsed = time.time() - start

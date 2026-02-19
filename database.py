@@ -1,13 +1,16 @@
 """
 Shared SQLite database layer for all three CNA News apps.
 """
+import os
 import sqlite3
 import json
 import logging
 from contextlib import contextmanager
 from typing import Optional, List, Dict, Any
 
-DB_PATH = "news.db"
+# Allow DB path to be overridden via environment variable.
+# On Railway, set DB_PATH to /data/news.db (persistent volume mount point).
+DB_PATH = os.environ.get("DB_PATH", "news.db")
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +219,19 @@ def get_all_urls() -> set:
     with get_conn() as conn:
         rows = conn.execute("SELECT url FROM articles").fetchall()
         return {r["url"] for r in rows}
+
+
+def get_unsummarised_articles(limit: int = 500) -> List[Dict[str, Any]]:
+    """Return articles that have no summary yet, newest first."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT id, title, full_text FROM articles
+               WHERE summary IS NULL OR summary = ''
+               ORDER BY scraped_at DESC
+               LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 def save_chat_message(

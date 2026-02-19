@@ -8,6 +8,7 @@ Usage:
     python chat_server.py
     Then open: http://localhost:8002
 """
+import os
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -81,4 +82,5 @@ def get_status():
 
 
 if __name__ == "__main__":
-    uvicorn.run("chat_server:app", host="0.0.0.0", port=8002, reload=False)
+    port = int(os.environ.get("PORT", 8002))
+    uvicorn.run("chat_server:app", host="0.0.0.0", port=port, reload=False)

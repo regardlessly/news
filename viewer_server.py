@@ -8,6 +8,7 @@ Usage:
     python viewer_server.py
     Then open: http://localhost:8001
 """
+import os
 import uvicorn
 from fastapi import FastAPI, Query
 from fastapi.staticfiles import StaticFiles
@@ -61,4 +62,5 @@ def get_status():
 
 
 if __name__ == "__main__":
-    uvicorn.run("viewer_server:app", host="0.0.0.0", port=8001, reload=False)
+    port = int(os.environ.get("PORT", 8001))
+    uvicorn.run("viewer_server:app", host="0.0.0.0", port=port, reload=False)
