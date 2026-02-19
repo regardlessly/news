@@ -51,16 +51,8 @@
       box-shadow: 0 2px 10px rgba(0,0,0,.07);
     }
     .header-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-    .logo {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: var(--accent);
-    }
-    .tagline {
-      font-size: 0.9rem;
-      color: var(--muted);
-      font-style: italic;
-    }
+    .logo { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+    .tagline { font-size: 0.9rem; color: var(--muted); font-style: italic; }
     .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .btn {
       padding: 8px 18px;
@@ -71,42 +63,51 @@
       cursor: pointer;
       border: none;
       transition: opacity 0.15s;
+      font-family: inherit;
     }
     .btn:hover { opacity: 0.85; }
-    .btn-back   { background: #eee; color: #333; }
+    .btn-back   { background: #ddd; color: #333; }
     .btn-chat   { background: var(--accent); color: #fff; }
-    .btn-theme  { background: var(--surface); border: 1px solid var(--border); width: 40px; height: 40px; border-radius: 10px; font-size: 1.1rem; cursor: pointer; }
-    body.dark .btn-back { background: #333; color: #eee; }
+    .btn-theme  {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    body.dark .btn-back { background: #444; color: #eee; }
 
-    /* Hero greeting */
+    /* Greeting */
     .greeting {
-      max-width: 860px;
-      margin: 36px auto 28px;
+      max-width: 800px;
+      margin: 36px auto 24px;
       padding: 0 24px;
     }
-    .greeting h1 {
-      font-size: 2rem;
-      color: var(--accent);
-      margin-bottom: 10px;
-    }
-    .greeting p {
-      font-size: 1.05rem;
-      color: var(--muted);
-    }
-    .greeting .date-badge {
+    .date-badge {
       display: inline-block;
       background: var(--warm);
       color: #fff;
       padding: 4px 14px;
       border-radius: 20px;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: bold;
       margin-bottom: 14px;
     }
+    .greeting h1 {
+      font-size: 1.9rem;
+      color: var(--accent);
+      margin-bottom: 10px;
+      line-height: 1.3;
+    }
+    .greeting p {
+      font-size: 1rem;
+      color: var(--muted);
+    }
 
-    /* Main container */
+    /* Container */
     .container {
-      max-width: 860px;
+      max-width: 800px;
       margin: 0 auto;
       padding: 0 24px 60px;
     }
@@ -114,104 +115,83 @@
     /* Section block */
     .section-block {
       margin-bottom: 44px;
-    }
-    .section-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 3px solid var(--border);
-    }
-    .section-icon {
-      font-size: 1.5rem;
-    }
-    .section-title h2 {
-      font-size: 1.35rem;
-      font-weight: bold;
-      color: var(--text);
-    }
-    .section-intro {
-      font-size: 0.95rem;
-      color: var(--muted);
-      margin-bottom: 18px;
-      font-style: italic;
-    }
-
-    /* Story item */
-    .story {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px 24px;
-      margin-bottom: 14px;
-      transition: box-shadow 0.15s;
+      padding: 28px 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
     }
-    .story:hover { box-shadow: 0 4px 16px rgba(0,0,0,.10); }
-    .story-num {
-      display: inline-block;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      text-align: center;
-      line-height: 28px;
-      font-size: 0.85rem;
-      font-weight: bold;
-      color: #fff;
-      margin-right: 10px;
-      flex-shrink: 0;
-    }
-    .story-header {
-      display: flex;
-      align-items: flex-start;
-      gap: 0;
-      margin-bottom: 10px;
-    }
-    .story-title {
-      font-size: 1.1rem;
-      font-weight: bold;
-      color: var(--text);
-      line-height: 1.4;
-    }
-    .story-summary {
-      font-size: 1rem;
-      color: var(--text);
-      line-height: 1.75;
-      margin-bottom: 12px;
-    }
-    .story-footer {
+    .section-header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+    }
+    .section-icon { font-size: 1.6rem; }
+    .section-header h2 {
+      font-size: 1.3rem;
+      font-weight: bold;
+      flex: 1;
+    }
+    .article-count {
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 12px;
+    }
+
+    /* Combined summary paragraph */
+    .section-summary {
+      font-size: 1.05rem;
+      line-height: 1.85;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+
+    /* Source links */
+    .sources-label {
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .sources-list {
+      list-style: none;
+      display: flex;
       flex-wrap: wrap;
       gap: 8px;
     }
-    .story-time {
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-    .story-link {
-      font-size: 0.9rem;
-      font-weight: bold;
+    .sources-list li a {
+      font-size: 0.82rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--accent);
       text-decoration: none;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 14px;
+      display: inline-block;
+      transition: background 0.15s;
     }
-    .story-link:hover { text-decoration: underline; }
+    .sources-list li a:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
 
-    /* Section accent colours */
-    .section-singapore .story-num { background: var(--green); }
-    .section-asia      .story-num { background: #e67e22; }
-    .section-world     .story-num { background: var(--blue); }
-    .section-business  .story-num { background: var(--purple); }
-    .section-sport     .story-num { background: var(--teal); }
-    .section-other     .story-num { background: var(--accent); }
-
-    /* Loading / empty states */
+    /* Loading / empty */
     .loading {
       text-align: center;
       padding: 80px 20px;
       color: var(--muted);
-      font-size: 1.1rem;
+      font-size: 1.05rem;
     }
     .spinner {
       width: 44px; height: 44px;
@@ -226,20 +206,21 @@
     /* Footer */
     .footer {
       text-align: center;
-      padding: 24px;
+      padding: 20px 24px;
       color: var(--muted);
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       border-top: 1px solid var(--border);
-      margin-top: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+    .footer a { color: var(--accent); text-decoration: none; }
 
     /* Responsive */
     @media (max-width: 600px) {
       body { font-size: 17px; }
-      .greeting h1 { font-size: 1.6rem; }
+      .greeting h1 { font-size: 1.55rem; }
       .header { padding: 12px 16px; }
       .greeting, .container { padding-left: 16px; padding-right: 16px; }
-      .story { padding: 16px 18px; }
+      .section-block { padding: 20px 18px; }
     }
   </style>
 </head>
@@ -272,12 +253,12 @@
   </div>
 
   <footer class="footer">
-    <p>News from Channel NewsAsia · Summaries generated by AI · <a href="/" style="color:var(--accent)">See all articles</a></p>
+    <p>News from Channel NewsAsia · Summaries generated by AI · <a href="/">See all articles</a></p>
   </footer>
 
   <script>
     // ---- Theme ----
-    (function() {
+    (function () {
       const saved = localStorage.getItem('theme') || 'light';
       if (saved === 'dark') {
         document.body.classList.add('dark');
@@ -292,55 +273,10 @@
     });
 
     // ---- Helpers ----
-    function relativeTime(dateStr) {
-      if (!dateStr) return '';
-      const d = new Date(dateStr.replace(' ', 'T'));
-      if (isNaN(d)) return '';
-      const diff = (Date.now() - d.getTime()) / 1000;
-      if (diff < 60)    return 'just now';
-      if (diff < 3600)  return `${Math.floor(diff / 60)} minutes ago`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
-      return `${Math.floor(diff / 86400)} days ago`;
-    }
-
     function todayString() {
       return new Date().toLocaleDateString('en-SG', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
-    }
-
-    const SECTION_ICONS = {
-      singapore: '🇸🇬',
-      asia:      '🌏',
-      world:     '🌍',
-      business:  '💼',
-      sport:     '⚽',
-    };
-
-    const SECTION_INTROS = {
-      singapore: 'Here is what is happening closer to home in Singapore today.',
-      asia:      'These are the important stories from around our region in Asia.',
-      world:     'These are some big stories from around the world today.',
-      business:  'Here is the latest news on business, money and the economy.',
-      sport:     'And here are today\'s sports highlights.',
-    };
-
-    // ---- Render ----
-    function renderStory(art, index, sectionClass) {
-      const timeStr = relativeTime(art.published_at || art.scraped_at);
-      const summary = art.summary || 'Summary not available.';
-      return `
-        <div class="story">
-          <div class="story-header">
-            <span class="story-num">${index + 1}</span>
-            <span class="story-title">${escapeHtml(art.title)}</span>
-          </div>
-          <p class="story-summary">${escapeHtml(summary)}</p>
-          <div class="story-footer">
-            ${timeStr ? `<span class="story-time">🕐 ${timeStr}</span>` : '<span></span>'}
-            <a class="story-link" href="${art.url}" target="_blank" rel="noopener">Read full story →</a>
-          </div>
-        </div>`;
     }
 
     function escapeHtml(str) {
@@ -351,12 +287,34 @@
         .replace(/"/g, '&quot;');
     }
 
-    function renderDigest(data) {
-      const content = document.getElementById('digestContent');
-      const intro = document.getElementById('digestIntro');
-      const dateBadge = document.getElementById('dateBadge');
+    // ---- Render ----
+    function renderGroup(group) {
+      const summary = group.summary || 'No summary available.';
+      const articles = group.articles || [];
 
-      dateBadge.textContent = todayString();
+      const sourceLinks = articles.map((a, i) =>
+        `<li><a href="${a.url}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a></li>`
+      ).join('');
+
+      return `
+        <div class="section-block">
+          <div class="section-header">
+            <span class="section-icon">${group.icon}</span>
+            <h2>${escapeHtml(group.label)} News</h2>
+            <span class="article-count">${group.article_count} stories</span>
+          </div>
+          <p class="section-summary">${escapeHtml(summary)}</p>
+          ${articles.length ? `
+            <p class="sources-label">Read the full stories</p>
+            <ul class="sources-list">${sourceLinks}</ul>
+          ` : ''}
+        </div>`;
+    }
+
+    function renderDigest(data) {
+      document.getElementById('dateBadge').textContent = todayString();
+      const intro = document.getElementById('digestIntro');
+      const content = document.getElementById('digestContent');
 
       if (!data.groups || data.groups.length === 0) {
         intro.textContent = 'No news articles found yet. Please check back later.';
@@ -364,38 +322,16 @@
         return;
       }
 
-      const total = data.total || 0;
-      intro.textContent = `We have found ${total} news stories for you today. Here is a friendly summary of the most important ones.`;
-
-      let html = '';
-      for (const group of data.groups) {
-        const sectionClass = `section-${group.section}`;
-        const icon = SECTION_ICONS[group.section] || '📰';
-        const sectionIntro = SECTION_INTROS[group.section] || '';
-        // Show up to 6 stories per section to keep it readable
-        const stories = group.articles.slice(0, 6);
-
-        html += `
-          <div class="section-block ${sectionClass}">
-            <div class="section-title">
-              <span class="section-icon">${icon}</span>
-              <h2>${group.label} News</h2>
-            </div>
-            ${sectionIntro ? `<p class="section-intro">${sectionIntro}</p>` : ''}
-            ${stories.map((art, i) => renderStory(art, i, sectionClass)).join('')}
-            ${group.articles.length > 6 ? `<p style="color:var(--muted);font-size:0.9rem;margin-top:8px;">...and ${group.articles.length - 6} more ${group.label} stories. <a href="/" style="color:var(--accent)">See all →</a></p>` : ''}
-          </div>`;
-      }
-      content.innerHTML = html;
+      intro.textContent = `We have found ${data.total || 0} news stories for you today. Here is a friendly summary of what happened in each section.`;
+      content.innerHTML = data.groups.map(renderGroup).join('');
     }
 
     // ---- Fetch ----
     async function loadDigest() {
       try {
-        const resp = await fetch('/api/digest?days=1');
+        const resp = await fetch('/api/digest-summary?days=1');
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        renderDigest(data);
+        renderDigest(await resp.json());
       } catch (e) {
         document.getElementById('digestContent').innerHTML =
           '<div class="loading"><p>Could not load news. Please try refreshing the page.</p></div>';

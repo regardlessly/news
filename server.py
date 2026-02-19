@@ -83,6 +83,52 @@ def get_sections():
     return {"sections": database.get_sections_summary()}
 
 
+@app.get("/api/digest-summary")
+def get_digest_summary(days: int = Query(1, ge=1, le=7)):
+    """Return one combined summary paragraph per section, for the Senior Digest view."""
+    articles = database.get_articles(section=None, days=days, limit=200, offset=0)
+    section_order  = ["singapore", "asia", "world", "business", "sport"]
+    section_icons  = {"singapore": "🇸🇬", "asia": "🌏", "world": "🌍", "business": "💼", "sport": "⚽"}
+    section_labels = {"singapore": "Singapore", "asia": "Asia", "world": "World", "business": "Business", "sport": "Sport"}
+
+    groups: dict = {}
+    for art in articles:
+        s = (art.get("section") or "other").lower()
+        if s not in groups:
+            groups[s] = []
+        groups[s].append(art)
+
+    result = []
+    for s in section_order:
+        if s not in groups:
+            continue
+        arts = groups[s]
+        summaries = [a.get("summary", "").strip() for a in arts if a.get("summary", "").strip()]
+        combined = " ".join(summaries)
+        links = [{"title": a["title"], "url": a["url"]} for a in arts]
+        result.append({
+            "section":       s,
+            "label":         section_labels.get(s, s.title()),
+            "icon":          section_icons.get(s, "📰"),
+            "summary":       combined,
+            "article_count": len(arts),
+            "articles":      links,
+        })
+    # Catch any sections not in the standard order
+    for s, arts in groups.items():
+        if s not in section_order:
+            summaries = [a.get("summary", "").strip() for a in arts if a.get("summary", "").strip()]
+            result.append({
+                "section":       s,
+                "label":         s.title(),
+                "icon":          "📰",
+                "summary":       " ".join(summaries),
+                "article_count": len(arts),
+                "articles":      [{"title": a["title"], "url": a["url"]} for a in arts],
+            })
+    return {"groups": result, "total": len(articles)}
+
+
 @app.get("/api/digest")
 def get_digest(days: int = Query(1, ge=1, le=7)):
     """Return today's articles grouped by section, for the Senior Digest view."""
