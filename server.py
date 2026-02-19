@@ -295,25 +295,13 @@ def post_chat(req: ChatRequest):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    reply, article_ids = chat_module.chat(
+    reply, _ = chat_module.chat(
         session_id=req.session_id,
         user_message=req.message.strip(),
     )
 
-    sources = []
-    for aid in article_ids:
-        art = database.get_article_by_id(aid)
-        if art:
-            sources.append({
-                "id":      art["id"],
-                "title":   art["title"],
-                "url":     art["url"],
-                "section": art.get("section", ""),
-            })
-
     return {
         "reply":      reply,
-        "sources":    sources,
         "session_id": req.session_id,
     }
 
