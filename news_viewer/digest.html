@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Today's News — Easy Read</title>
+  <style>
+    :root {
+      --bg:       #fdf9f3;
+      --surface:  #ffffff;
+      --border:   #e8e0d0;
+      --text:     #2c2c2c;
+      --muted:    #7a7060;
+      --accent:   #c0392b;
+      --warm:     #f39c12;
+      --green:    #27ae60;
+      --blue:     #2980b9;
+      --purple:   #8e44ad;
+      --teal:     #16a085;
+      --radius:   14px;
+    }
+    body.dark {
+      --bg:      #1a1a14;
+      --surface: #262618;
+      --border:  #3a3a28;
+      --text:    #ece8df;
+      --muted:   #a09880;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,.07);
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--accent);
+    }
+    .tagline {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      padding: 8px 18px;
+      border-radius: 24px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-back   { background: #eee; color: #333; }
+    .btn-chat   { background: var(--accent); color: #fff; }
+    .btn-theme  { background: var(--surface); border: 1px solid var(--border); width: 40px; height: 40px; border-radius: 10px; font-size: 1.1rem; cursor: pointer; }
+    body.dark .btn-back { background: #333; color: #eee; }
+
+    /* Hero greeting */
+    .greeting {
+      max-width: 860px;
+      margin: 36px auto 28px;
+      padding: 0 24px;
+    }
+    .greeting h1 {
+      font-size: 2rem;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .greeting p {
+      font-size: 1.05rem;
+      color: var(--muted);
+    }
+    .greeting .date-badge {
+      display: inline-block;
+      background: var(--warm);
+      color: #fff;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      margin-bottom: 14px;
+    }
+
+    /* Main container */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    /* Section block */
+    .section-block {
+      margin-bottom: 44px;
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid var(--border);
+    }
+    .section-icon {
+      font-size: 1.5rem;
+    }
+    .section-title h2 {
+      font-size: 1.35rem;
+      font-weight: bold;
+      color: var(--text);
+    }
+    .section-intro {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-bottom: 18px;
+      font-style: italic;
+    }
+
+    /* Story item */
+    .story {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 14px;
+      transition: box-shadow 0.15s;
+    }
+    .story:hover { box-shadow: 0 4px 16px rgba(0,0,0,.10); }
+    .story-num {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 28px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #fff;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .story-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      margin-bottom: 10px;
+    }
+    .story-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .story-summary {
+      font-size: 1rem;
+      color: var(--text);
+      line-height: 1.75;
+      margin-bottom: 12px;
+    }
+    .story-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .story-time {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .story-link {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .story-link:hover { text-decoration: underline; }
+
+    /* Section accent colours */
+    .section-singapore .story-num { background: var(--green); }
+    .section-asia      .story-num { background: #e67e22; }
+    .section-world     .story-num { background: var(--blue); }
+    .section-business  .story-num { background: var(--purple); }
+    .section-sport     .story-num { background: var(--teal); }
+    .section-other     .story-num { background: var(--accent); }
+
+    /* Loading / empty states */
+    .loading {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 18px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border);
+      margin-top: 20px;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      body { font-size: 17px; }
+      .greeting h1 { font-size: 1.6rem; }
+      .header { padding: 12px 16px; }
+      .greeting, .container { padding-left: 16px; padding-right: 16px; }
+      .story { padding: 16px 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <span class="logo">📰 CNA Digest</span>
+      <span class="tagline">Easy Read Edition</span>
+    </div>
+    <div class="header-right">
+      <a href="/" class="btn btn-back">← Full View</a>
+      <a href="/chat" class="btn btn-chat">💬 Ask Questions</a>
+      <button class="btn-theme" id="themeToggle" title="Toggle theme">🌙</button>
+    </div>
+  </header>
+
+  <div class="greeting">
+    <div class="date-badge" id="dateBadge">Today</div>
+    <h1>Good morning! Here's what's happening today.</h1>
+    <p id="digestIntro">Loading today's news for you...</p>
+  </div>
+
+  <div class="container">
+    <div id="digestContent">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Fetching today's news...</p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>News from Channel NewsAsia · Summaries generated by AI · <a href="/" style="color:var(--accent)">See all articles</a></p>
+  </footer>
+
+  <script>
+    // ---- Theme ----
+    (function() {
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') {
+        document.body.classList.add('dark');
+        document.getElementById('themeToggle').textContent = '☀️';
+      }
+    })();
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      const isDark = document.body.classList.contains('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
+    });
+
+    // ---- Helpers ----
+    function relativeTime(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr.replace(' ', 'T'));
+      if (isNaN(d)) return '';
+      const diff = (Date.now() - d.getTime()) / 1000;
+      if (diff < 60)    return 'just now';
+      if (diff < 3600)  return `${Math.floor(diff / 60)} minutes ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+      return `${Math.floor(diff / 86400)} days ago`;
+    }
+
+    function todayString() {
+      return new Date().toLocaleDateString('en-SG', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+    }
+
+    const SECTION_ICONS = {
+      singapore: '🇸🇬',
+      asia:      '🌏',
+      world:     '🌍',
+      business:  '💼',
+      sport:     '⚽',
+    };
+
+    const SECTION_INTROS = {
+      singapore: 'Here is what is happening closer to home in Singapore today.',
+      asia:      'These are the important stories from around our region in Asia.',
+      world:     'These are some big stories from around the world today.',
+      business:  'Here is the latest news on business, money and the economy.',
+      sport:     'And here are today\'s sports highlights.',
+    };
+
+    // ---- Render ----
+    function renderStory(art, index, sectionClass) {
+      const timeStr = relativeTime(art.published_at || art.scraped_at);
+      const summary = art.summary || 'Summary not available.';
+      return `
+        <div class="story">
+          <div class="story-header">
+            <span class="story-num">${index + 1}</span>
+            <span class="story-title">${escapeHtml(art.title)}</span>
+          </div>
+          <p class="story-summary">${escapeHtml(summary)}</p>
+          <div class="story-footer">
+            ${timeStr ? `<span class="story-time">🕐 ${timeStr}</span>` : '<span></span>'}
+            <a class="story-link" href="${art.url}" target="_blank" rel="noopener">Read full story →</a>
+          </div>
+        </div>`;
+    }
+
+    function escapeHtml(str) {
+      return (str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function renderDigest(data) {
+      const content = document.getElementById('digestContent');
+      const intro = document.getElementById('digestIntro');
+      const dateBadge = document.getElementById('dateBadge');
+
+      dateBadge.textContent = todayString();
+
+      if (!data.groups || data.groups.length === 0) {
+        intro.textContent = 'No news articles found yet. Please check back later.';
+        content.innerHTML = '<div class="loading"><p>No articles found for today.</p></div>';
+        return;
+      }
+
+      const total = data.total || 0;
+      intro.textContent = `We have found ${total} news stories for you today. Here is a friendly summary of the most important ones.`;
+
+      let html = '';
+      for (const group of data.groups) {
+        const sectionClass = `section-${group.section}`;
+        const icon = SECTION_ICONS[group.section] || '📰';
+        const sectionIntro = SECTION_INTROS[group.section] || '';
+        // Show up to 6 stories per section to keep it readable
+        const stories = group.articles.slice(0, 6);
+
+        html += `
+          <div class="section-block ${sectionClass}">
+            <div class="section-title">
+              <span class="section-icon">${icon}</span>
+              <h2>${group.label} News</h2>
+            </div>
+            ${sectionIntro ? `<p class="section-intro">${sectionIntro}</p>` : ''}
+            ${stories.map((art, i) => renderStory(art, i, sectionClass)).join('')}
+            ${group.articles.length > 6 ? `<p style="color:var(--muted);font-size:0.9rem;margin-top:8px;">...and ${group.articles.length - 6} more ${group.label} stories. <a href="/" style="color:var(--accent)">See all →</a></p>` : ''}
+          </div>`;
+      }
+      content.innerHTML = html;
+    }
+
+    // ---- Fetch ----
+    async function loadDigest() {
+      try {
+        const resp = await fetch('/api/digest?days=1');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        renderDigest(data);
+      } catch (e) {
+        document.getElementById('digestContent').innerHTML =
+          '<div class="loading"><p>Could not load news. Please try refreshing the page.</p></div>';
+        document.getElementById('digestIntro').textContent = '';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDigest);
+  </script>
+</body>
+</html>

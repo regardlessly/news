@@ -55,6 +55,11 @@ def chat_index():
     return FileResponse("chat_app/index.html")
 
 
+@app.get("/digest")
+def digest_index():
+    return FileResponse("news_viewer/digest.html")
+
+
 # ---- Viewer API ----
 
 @app.get("/api/articles")
@@ -76,6 +81,41 @@ def get_articles(
 @app.get("/api/sections")
 def get_sections():
     return {"sections": database.get_sections_summary()}
+
+
+@app.get("/api/digest")
+def get_digest(days: int = Query(1, ge=1, le=7)):
+    """Return today's articles grouped by section, for the Senior Digest view."""
+    articles = database.get_articles(section=None, days=days, limit=200, offset=0)
+    section_order = ["singapore", "asia", "world", "business", "sport"]
+    section_labels = {
+        "singapore": "Singapore",
+        "asia":      "Asia",
+        "world":     "World",
+        "business":  "Business",
+        "sport":     "Sport",
+    }
+    groups = {}
+    for art in articles:
+        s = (art.get("section") or "other").lower()
+        if s not in groups:
+            groups[s] = []
+        groups[s].append({
+            "id":           art["id"],
+            "title":        art["title"],
+            "summary":      art.get("summary") or "",
+            "url":          art["url"],
+            "published_at": art.get("published_at"),
+            "scraped_at":   art.get("scraped_at"),
+        })
+    result = []
+    for s in section_order:
+        if s in groups:
+            result.append({"section": s, "label": section_labels.get(s, s.title()), "articles": groups[s]})
+    for s, arts in groups.items():
+        if s not in section_order:
+            result.append({"section": s, "label": s.title(), "articles": arts})
+    return {"groups": result, "total": len(articles)}
 
 
 # ---- Shared status ----

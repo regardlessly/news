@@ -76,9 +76,7 @@ body {
   color: var(--text-muted);
 }
 
-.btn-chat {
-  background: var(--accent);
-  color: #fff;
+.btn-chat, .btn-digest {
   border: none;
   padding: 7px 14px;
   border-radius: 20px;
@@ -89,7 +87,16 @@ body {
   transition: background var(--transition);
   white-space: nowrap;
 }
+.btn-chat {
+  background: var(--accent);
+  color: #fff;
+}
 .btn-chat:hover { background: var(--accent-hover); }
+.btn-digest {
+  background: #f39c12;
+  color: #fff;
+}
+.btn-digest:hover { background: #d68910; }
 
 .btn-icon {
   background: var(--surface2);
