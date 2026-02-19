@@ -2,7 +2,6 @@
 builder = "nixpacks"
 
 [deploy]
-# Default service start command — overridden per-service in Railway dashboard
-startCommand = "python viewer_server.py"
+startCommand = "python server.py"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
