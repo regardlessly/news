@@ -117,17 +117,17 @@ SENIOR_SELECT_PROMPT = (
 )
 
 SECTION_DIGEST_PROMPT = (
-    "You are a friendly news editor writing a daily digest for seniors (aged 60+).\n\n"
-    "Below are the 10 most senior-relevant article summaries from the '{section}' news section today.\n\n"
+    "You are a news editor writing a concise daily digest.\n\n"
+    "Below are article summaries from the '{section}' news section today.\n\n"
     "{summaries}\n\n"
-    "Write a single cohesive digest (paragraph or bullet points) covering these stories. Requirements:\n"
-    "- Maximum 150 words\n"
-    "- Friendly, warm, conversational tone — easy for anyone to understand\n"
-    "- Use bullet points (starting with '- ') when there are 3 or more distinct topics, otherwise flowing prose\n"
-    "- For bullet points, use '**Topic:**' style bold labels where helpful\n"
-    "- Do not start with 'Today' or 'Here is'\n"
-    "- Do not mention the number of articles\n"
-    "- Write directly — no preamble like 'This section covers...'"
+    "Write a bullet-point digest covering the key stories. Requirements:\n"
+    "- Always use bullet points (starting with '- '), one per story\n"
+    "- Maximum 5 bullets\n"
+    "- Each bullet: maximum 20 words\n"
+    "- Use '**Topic:**' bold label at the start of each bullet where helpful\n"
+    "- Plain, clear language — no jargon\n"
+    "- Do not start with 'Today', 'Here is', or any preamble\n"
+    "- Do not mention the number of articles"
 )
 
 
@@ -224,7 +224,7 @@ def summarise_section(
             model="deepseek-chat",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.4,
-            max_tokens=250,
+            max_tokens=180,
         )
         return response.choices[0].message.content.strip()
     except RateLimitError:
@@ -236,7 +236,7 @@ def summarise_section(
                 model="deepseek-chat",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.4,
-                max_tokens=250,
+                max_tokens=180,
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
