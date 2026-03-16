@@ -6,12 +6,18 @@ All responses use a consistent envelope: {"data": ..., "meta": {...}}
 
 OpenAPI schema available at /docs (Swagger UI) or /redoc.
 """
+import logging
+import threading
+import time
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
 import database
 import summariser
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/mobile", tags=["Flutter Mobile API"])
 
@@ -184,60 +190,113 @@ def get_sections():
     return _envelope(database.get_sections_summary())
 
 
-@router.get(
-    "/digest",
-    response_model=DigestResponse,
-    summary="Get senior-focused news digest",
-    description="Articles grouped by section, filtered to topics relevant to seniors (health, cost of living, CPF, HDB, transport, safety, etc). Uses AI to select the most relevant articles per section.",
-)
-def get_digest(
-    days: int = Query(1, ge=1, le=7, description="Look back N days"),
-    top_n: int = Query(10, ge=1, le=20, description="Max senior-relevant articles per section"),
-):
+# ---------------------------------------------------------------------------
+# Mobile digest cache — pre-built in background, refreshed hourly
+# ---------------------------------------------------------------------------
+
+_SECTION_ORDER  = ["singapore", "asia", "world", "business", "sport"]
+_SECTION_LABELS = {
+    "singapore": "Singapore", "asia": "Asia", "world": "World",
+    "business": "Business", "sport": "Sport",
+}
+
+_mobile_digest_cache: dict = {
+    "groups":   [],
+    "total":    0,
+    "ready":    False,
+    "building": False,
+    "built_at": None,
+}
+_mobile_cache_lock = threading.Lock()
+
+
+def _build_mobile_digest(days: int = 1, top_n: int = 10) -> dict:
+    """Build senior-filtered digest with individual article summaries (already concise from DB)."""
     articles = database.get_articles(section=None, days=days, limit=200, offset=0)
 
-    section_order = ["singapore", "asia", "world", "business", "sport"]
-    section_labels = {
-        "singapore": "Singapore", "asia": "Asia", "world": "World",
-        "business": "Business", "sport": "Sport",
-    }
-
-    # Group raw articles by section
     raw_groups: dict = {}
     for art in articles:
         s = (art.get("section") or "other").lower()
-        raw_groups.setdefault(s, [])
-        raw_groups[s].append(art)
+        raw_groups.setdefault(s, []).append(art)
 
-    # For each section, use AI to select only senior-relevant articles
     result = []
-    ordered = [s for s in section_order if s in raw_groups]
-    extra = [s for s in raw_groups if s not in section_order]
+    ordered = [s for s in _SECTION_ORDER if s in raw_groups]
+    extra = [s for s in raw_groups if s not in _SECTION_ORDER]
 
     for s in ordered + extra:
-        label = section_labels.get(s, s.title())
+        label = _SECTION_LABELS.get(s, s.title())
         section_articles = raw_groups[s]
 
-        # AI-powered senior relevance filtering
+        # AI-powered senior relevance filtering (1 DeepSeek call per section)
         selected = summariser.select_senior_articles(label, section_articles, top_n=top_n)
 
-        # Condense summaries (~30% shorter) for mobile readability
-        raw_summaries = [art.get("summary") or "" for art in selected]
-        condensed = summariser.condense_summaries(raw_summaries, reduction=0.3)
-
+        # Summaries are already concise (~80 words) from fetch_news.py — no condensing needed
         digest_articles = [{
             "id":           art["id"],
             "title":        art["title"],
-            "summary":      condensed[i],
+            "summary":      art.get("summary") or "",
             "url":          art["url"],
             "published_at": art.get("published_at"),
-        } for i, art in enumerate(selected)]
+        } for art in selected]
 
         if digest_articles:
             result.append({"section": s, "label": label, "articles": digest_articles})
 
-    total_selected = sum(len(g["articles"]) for g in result)
-    return _envelope(result, total=total_selected)
+    total = sum(len(g["articles"]) for g in result)
+    return {"groups": result, "total": total}
+
+
+def _refresh_mobile_digest():
+    """Build the mobile digest cache, skip if already building."""
+    with _mobile_cache_lock:
+        if _mobile_digest_cache["building"]:
+            return
+        _mobile_digest_cache["building"] = True
+
+    try:
+        logger.info("Building mobile digest cache...")
+        payload = _build_mobile_digest(days=1, top_n=10)
+        with _mobile_cache_lock:
+            _mobile_digest_cache["groups"]   = payload["groups"]
+            _mobile_digest_cache["total"]    = payload["total"]
+            _mobile_digest_cache["ready"]    = True
+            _mobile_digest_cache["built_at"] = datetime.now(timezone.utc).isoformat()
+        logger.info(f"Mobile digest cache ready — {len(payload['groups'])} sections, {payload['total']} articles.")
+    except Exception as e:
+        logger.error(f"Mobile digest cache build failed: {e}")
+    finally:
+        with _mobile_cache_lock:
+            _mobile_digest_cache["building"] = False
+
+
+def _mobile_digest_loop():
+    """Refresh cache on startup, then every 60 minutes."""
+    _refresh_mobile_digest()
+    while True:
+        time.sleep(3600)
+        _refresh_mobile_digest()
+
+
+# Start background thread
+_mobile_bg = threading.Thread(target=_mobile_digest_loop, daemon=True)
+_mobile_bg.start()
+
+
+@router.get(
+    "/digest",
+    response_model=DigestResponse,
+    summary="Get senior-focused news digest",
+    description="Senior-filtered articles grouped by section. Pre-built in background and served from cache for instant response. Refreshes hourly.",
+)
+def get_digest():
+    with _mobile_cache_lock:
+        if not _mobile_digest_cache["ready"]:
+            return _envelope([], total=0, ready=False, building=_mobile_digest_cache["building"])
+        return _envelope(
+            _mobile_digest_cache["groups"],
+            total=_mobile_digest_cache["total"],
+            built_at=_mobile_digest_cache["built_at"],
+        )
 
 
 @router.get(
