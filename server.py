@@ -34,6 +34,7 @@ import threading
 import uvicorn
 from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -42,13 +43,25 @@ from typing import Optional
 import database
 import chat as chat_module
 import summariser
+import flutter_api
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 database.init_db()
 
-app = FastAPI(title="CNA News", docs_url=None, redoc_url=None)
+app = FastAPI(title="CNA News", docs_url="/docs", redoc_url="/redoc")
+
+# CORS — allow Flutter apps (web, emulator, device) to call the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
+# Mount Flutter mobile API router
+app.include_router(flutter_api.router)
 
 # Static files — separate mount paths to avoid collision
 app.mount("/viewer/static", StaticFiles(directory="news_viewer"), name="viewer_static")
