@@ -50,7 +50,19 @@ logger = logging.getLogger(__name__)
 
 database.init_db()
 
-app = FastAPI(title="CNA News", docs_url="/docs", redoc_url="/redoc")
+app = FastAPI(
+    title="CNA Senior News API",
+    description=(
+        "News API serving senior-relevant CNA articles. "
+        "Articles are pre-filtered at ingestion for topics seniors care about: "
+        "health, CPF/retirement, HDB housing, cost of living, government policies, "
+        "transport, safety, community events, and major world events. "
+        "Mobile API endpoints are under /api/mobile/."
+    ),
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
 # CORS — allow Flutter apps (web, emulator, device) to call the API
 app.add_middleware(

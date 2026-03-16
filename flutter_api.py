@@ -1,9 +1,11 @@
 """
-Flutter Mobile API — clean REST endpoints for the CNA News Flutter app.
+Flutter Mobile API — REST endpoints for the CNA Senior News Flutter app.
+
+All articles are pre-filtered at ingestion for senior relevance (health,
+CPF/retirement, HDB, cost of living, transport, safety, community events).
 
 Mounted at /api/mobile/* in server.py.
 All responses use a consistent envelope: {"data": ..., "meta": {...}}
-
 OpenAPI schema available at /docs (Swagger UI) or /redoc.
 """
 import logging
@@ -132,8 +134,8 @@ def _envelope(data, **meta):
 @router.get(
     "/articles",
     response_model=ArticleListResponse,
-    summary="List articles",
-    description="Paginated article list with optional section filter. Returns lightweight fields suitable for list/card views.",
+    summary="List senior-relevant articles",
+    description="Paginated list of senior-relevant articles with optional section filter. All articles are pre-filtered at ingestion for topics seniors care about. Returns lightweight fields suitable for list/card views.",
 )
 def list_articles(
     section: Optional[str] = Query(None, description="Filter by section: singapore, asia, world, business, sport"),
@@ -167,8 +169,8 @@ def get_article(article_id: int):
 @router.get(
     "/search",
     response_model=SearchResponse,
-    summary="Search articles",
-    description="Keyword search across article titles (weighted 3x) and body text. Returns results ranked by relevance.",
+    summary="Search senior-relevant articles",
+    description="Keyword search across senior-relevant article titles (weighted 3x) and body text. Returns results ranked by relevance.",
 )
 def search_articles(
     q: str = Query(..., min_length=1, description="Search query"),
@@ -278,8 +280,8 @@ _mobile_bg.start()
 @router.get(
     "/digest",
     response_model=DigestResponse,
-    summary="Get senior-focused news digest",
-    description="Senior-filtered articles grouped by section. Pre-built in background and served from cache for instant response. Refreshes hourly.",
+    summary="Get senior news digest",
+    description="Senior-relevant articles grouped by section (Singapore, Asia, World, Business, Sport). Pre-built in background cache for instant response, refreshes hourly. Articles are pre-filtered at ingestion — no AI calls at request time.",
 )
 def get_digest():
     with _mobile_cache_lock:
