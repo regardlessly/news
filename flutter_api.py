@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 
 import database
-import summariser
 
 logger = logging.getLogger(__name__)
 
@@ -210,8 +209,8 @@ _mobile_digest_cache: dict = {
 _mobile_cache_lock = threading.Lock()
 
 
-def _build_mobile_digest(days: int = 1, top_n: int = 10) -> dict:
-    """Build senior-filtered digest with individual article summaries (already concise from DB)."""
+def _build_mobile_digest(days: int = 1) -> dict:
+    """Build digest from DB — articles are already senior-filtered at ingestion time."""
     articles = database.get_articles(section=None, days=days, limit=200, offset=0)
 
     raw_groups: dict = {}
@@ -225,19 +224,13 @@ def _build_mobile_digest(days: int = 1, top_n: int = 10) -> dict:
 
     for s in ordered + extra:
         label = _SECTION_LABELS.get(s, s.title())
-        section_articles = raw_groups[s]
-
-        # AI-powered senior relevance filtering (1 DeepSeek call per section)
-        selected = summariser.select_senior_articles(label, section_articles, top_n=top_n)
-
-        # Summaries are already concise (~80 words) from fetch_news.py — no condensing needed
         digest_articles = [{
             "id":           art["id"],
             "title":        art["title"],
             "summary":      art.get("summary") or "",
             "url":          art["url"],
             "published_at": art.get("published_at"),
-        } for art in selected]
+        } for art in raw_groups[s]]
 
         if digest_articles:
             result.append({"section": s, "label": label, "articles": digest_articles})
@@ -255,7 +248,7 @@ def _refresh_mobile_digest():
 
     try:
         logger.info("Building mobile digest cache...")
-        payload = _build_mobile_digest(days=1, top_n=10)
+        payload = _build_mobile_digest(days=1)
         with _mobile_cache_lock:
             _mobile_digest_cache["groups"]   = payload["groups"]
             _mobile_digest_cache["total"]    = payload["total"]

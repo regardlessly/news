@@ -88,8 +88,8 @@ _cache_lock = threading.Lock()
 
 def _build_digest(days: int = 1) -> dict:
     """
-    Pull articles from DB, call DeepSeek per section, return digest payload.
-    This is the slow part — runs in a background thread.
+    Pull articles from DB (already senior-filtered at ingestion),
+    produce a per-section digest summary. Runs in a background thread.
     """
     articles = database.get_articles(section=None, days=days, limit=200, offset=0)
 
@@ -107,25 +107,20 @@ def _build_digest(days: int = 1) -> dict:
         label = SECTION_LABELS.get(s, s.title())
         icon  = SECTION_ICONS.get(s, "📰")
 
-        # Step 1: pick the top 10 senior-relevant articles from this section
-        logger.info(f"Selecting top 10 senior articles for '{label}' ({len(arts)} total)...")
-        selected_arts = summariser.select_senior_articles(label, arts, top_n=10)
-
-        # Step 2: summarise only those 10 articles
-        selected_summaries = [a.get("summary", "").strip() for a in selected_arts if a.get("summary", "").strip()]
-        logger.info(f"Summarising {len(selected_summaries)} selected articles for '{label}'...")
+        # Articles are already senior-filtered at ingestion — summarise directly
+        selected_summaries = [a.get("summary", "").strip() for a in arts if a.get("summary", "").strip()]
+        logger.info(f"Summarising {len(selected_summaries)} articles for '{label}'...")
         digest = summariser.summarise_section(label, selected_summaries)
         if not digest:
             digest = " ".join(selected_summaries)
 
-        # Return all articles as source links, highlight selected ones
-        links = [{"title": a["title"], "url": a["url"]} for a in selected_arts]
+        links = [{"title": a["title"], "url": a["url"]} for a in arts]
         result.append({
             "section":       s,
             "label":         label,
             "icon":          icon,
             "summary":       digest,
-            "article_count": len(selected_arts),
+            "article_count": len(arts),
             "articles":      links,
         })
 
