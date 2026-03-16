@@ -247,6 +247,83 @@ def summarise_section(
         return None
 
 
+CONDENSE_PROMPT = (
+    "Shorten the following news summary to about {target_words} words. "
+    "Keep only the most important facts. Write in plain, clear language suitable for seniors. "
+    "Do not start with 'This' or 'The article'. Write directly.\n\n"
+    "Original:\n{text}"
+)
+
+
+def condense_summaries(
+    summaries: List[str],
+    reduction: float = 0.3,
+) -> List[str]:
+    """
+    Condense a batch of summary strings by ~reduction (e.g. 0.3 = 30% shorter).
+    Uses a single DeepSeek call with numbered summaries for efficiency.
+    Returns condensed list in the same order. Falls back to originals on failure.
+    """
+    if not summaries:
+        return summaries
+
+    import json as _json
+
+    # Build a single prompt with all summaries numbered
+    numbered = []
+    for i, s in enumerate(summaries, 1):
+        if s.strip():
+            word_count = len(s.split())
+            target = max(10, int(word_count * (1 - reduction)))
+            numbered.append({"idx": i, "text": s, "target": target})
+
+    if not numbered:
+        return summaries
+
+    batch_prompt = (
+        "Shorten each numbered news summary below to the target word count shown. "
+        "Keep only the key facts. Use plain, clear language for seniors. "
+        "Do not start any summary with 'This' or 'The article'. Write directly.\n"
+        "Reply with a JSON array of objects: [{\"idx\": 1, \"text\": \"...\"}, ...].\n"
+        "No explanation, just the JSON array.\n\n"
+    )
+    for item in numbered:
+        batch_prompt += f"{item['idx']}. (~{item['target']} words) {item['text']}\n"
+
+    try:
+        client = get_client()
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": batch_prompt}],
+            temperature=0.2,
+            max_tokens=2000,
+        )
+        raw = response.choices[0].message.content.strip()
+
+        import re as _re
+        # Find JSON array in response
+        match = _re.search(r'\[.*\]', raw, _re.DOTALL)
+        if not match:
+            raise ValueError(f"No JSON array in response: {raw[:200]}")
+        parsed = _json.loads(match.group())
+        condensed_map = {item["idx"]: item["text"] for item in parsed}
+
+        # Rebuild list in original order
+        result = []
+        idx = 0
+        for s in summaries:
+            if s.strip():
+                idx += 1
+                result.append(condensed_map.get(idx, s))
+            else:
+                result.append(s)
+        return result
+
+    except Exception as e:
+        logger.error(f"Batch condense failed ({e}), returning originals")
+        return summaries
+
+
 CHAT_REPLY_PROMPT = (
     "You are a warm, friendly news assistant talking to a senior reader.\n\n"
     "The reader asked: {question}\n\n"

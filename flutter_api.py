@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 
 import database
+import summariser
 
 router = APIRouter(prefix="/api/mobile", tags=["Flutter Mobile API"])
 
@@ -186,10 +187,13 @@ def get_sections():
 @router.get(
     "/digest",
     response_model=DigestResponse,
-    summary="Get news digest",
-    description="Articles grouped by section, ordered: Singapore, Asia, World, Business, Sport. Ideal for feed/digest UI.",
+    summary="Get senior-focused news digest",
+    description="Articles grouped by section, filtered to topics relevant to seniors (health, cost of living, CPF, HDB, transport, safety, etc). Uses AI to select the most relevant articles per section.",
 )
-def get_digest(days: int = Query(1, ge=1, le=7, description="Look back N days")):
+def get_digest(
+    days: int = Query(1, ge=1, le=7, description="Look back N days"),
+    top_n: int = Query(10, ge=1, le=20, description="Max senior-relevant articles per section"),
+):
     articles = database.get_articles(section=None, days=days, limit=200, offset=0)
 
     section_order = ["singapore", "asia", "world", "business", "sport"]
@@ -198,26 +202,42 @@ def get_digest(days: int = Query(1, ge=1, le=7, description="Look back N days"))
         "business": "Business", "sport": "Sport",
     }
 
-    groups: dict = {}
+    # Group raw articles by section
+    raw_groups: dict = {}
     for art in articles:
         s = (art.get("section") or "other").lower()
-        groups.setdefault(s, []).append({
+        raw_groups.setdefault(s, [])
+        raw_groups[s].append(art)
+
+    # For each section, use AI to select only senior-relevant articles
+    result = []
+    ordered = [s for s in section_order if s in raw_groups]
+    extra = [s for s in raw_groups if s not in section_order]
+
+    for s in ordered + extra:
+        label = section_labels.get(s, s.title())
+        section_articles = raw_groups[s]
+
+        # AI-powered senior relevance filtering
+        selected = summariser.select_senior_articles(label, section_articles, top_n=top_n)
+
+        # Condense summaries (~30% shorter) for mobile readability
+        raw_summaries = [art.get("summary") or "" for art in selected]
+        condensed = summariser.condense_summaries(raw_summaries, reduction=0.3)
+
+        digest_articles = [{
             "id":           art["id"],
             "title":        art["title"],
-            "summary":      art.get("summary") or "",
+            "summary":      condensed[i],
             "url":          art["url"],
             "published_at": art.get("published_at"),
-        })
+        } for i, art in enumerate(selected)]
 
-    result = []
-    for s in section_order:
-        if s in groups:
-            result.append({"section": s, "label": section_labels.get(s, s.title()), "articles": groups[s]})
-    for s in groups:
-        if s not in section_order:
-            result.append({"section": s, "label": s.title(), "articles": groups[s]})
+        if digest_articles:
+            result.append({"section": s, "label": label, "articles": digest_articles})
 
-    return _envelope(result, total=len(articles))
+    total_selected = sum(len(g["articles"]) for g in result)
+    return _envelope(result, total=total_selected)
 
 
 @router.get(
